@@ -40,7 +40,7 @@ else
 fi
 
 # Grab guide
-tv_grab_kr --days 3 --output $FILE
+npx tv_grab_kr --days 3 --output $FILE
 echo "Guide file created at '$FILE'"
 
 # Wait for specific time
