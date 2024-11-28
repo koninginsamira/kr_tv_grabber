@@ -4,8 +4,8 @@ GUIDE_PATH="data/"
 FILE="$GUIDE_PATH$GUIDE_FILE.xml"
 
 # Check if the required variables are set
-if [ -z "$GUIDE_FILE" ] || [ -z "$BACKUP_COUNT" ]; then
-    echo "Error: GUIDE_FILE or BACKUP_COUNT is not set."
+if [ -z "$GUIDE_FILE" ] || [ -z "$BACKUP_COUNT" ] || [ -z "$RESTART_TIME" ]; then
+    echo "Error: GUIDE_FILE, BACKUP_COUNT or RESTART_TIME is not set."
     exit 1
 fi
 
@@ -31,12 +31,29 @@ if [ -f "$FILE" ]; then
                 rm "$NEXT_FILE"
                 echo "The maximum backup count ($BACKUP_COUNT) has been reached, removed '$NEXT_FILE'"
             fi
+
+            break
         fi
     done
 else
     echo "Guide file '$FILE' does not yet exist"
 fi
 
+# Grab guide
 tv_grab_kr --days 3 --output $FILE
-
 echo "Guide file created at '$FILE'"
+
+# Wait for specific time
+CURRENT_EPOCH=$(date +%s)
+TARGET_EPOCH=$(date -d "$RESTART_TIME today" +%s)
+if (( CURRENT_EPOCH >= TARGET_EPOCH )); then
+    TARGET_EPOCH=$(date -d "$RESTART_TIME tomorrow" +%s)
+fi
+
+SLEEP_SECONDS=$(( $TARGET_EPOCH - $CURRENT_EPOCH ))
+
+echo "Waiting for $SLEEP_SECONDS seconds until the next $RESTART_TIME..."
+sleep $SLEEP_SECONDS
+
+# Restart
+exec ./run.sh
