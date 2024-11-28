@@ -2,7 +2,6 @@
   "name": "kr_tv_grabber",
   "version": "1.0.0",
   "description": "This grabber downloads the TV guide of Korean channels in the XMLTV format.",
-  "main": "index.js",
   "author": "Samira",
   "license": "ISC",
   "dependencies": {
