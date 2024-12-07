@@ -23,13 +23,14 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - GUIDE_FILE=guide-kr # optional
+      - GUIDE_FILENAME=guide-kr # optional
       - BACKUP_COUNT=7 # optional
       - RESTART_TIME=00:00 # optional
       - TZ=Etc/UTC
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ./data/media/live/guides:/data
+      - ./path/to/guide/location:/data
+      - ./config/kr_tv_grabber:/config
 ```
 
 ### docker cli ([click here for more info](https://docs.docker.com/engine/reference/commandline/cli/))
@@ -39,12 +40,13 @@ docker run -d \
   --name=kr_tv_grabber \
   -e PUID=1000 \
   -e PGID=1000 \
-  -e GUIDE_FILE=guide-kr `# optional` \
+  -e GUIDE_FILENAME=guide-kr `# optional` \
   -e BACKUP_COUNT=7 `# optional` \
   -e RESTART_TIME=00:00 `# optional` \
   -e TZ=Etc/UTC \
   -v /etc/localtime:/etc/localtime:ro \
-  -v /path/to/guide:/data \
+  -v /path/to/guide/location:/data \
+  -v /config/kr_tv_grabber:/config \
   --restart unless-stopped \
   ghcr.io/koninginsamira/kr_tv_grabber:main
 ```
@@ -54,12 +56,12 @@ docker run -d \
 | :----: | --- |
 | `-e PUID=1000` | For UserID. |
 | `-e PGID=1000` | For GroupID. |
-| `-e GUIDE_FILE=guide-kr` | Change filename of output (NOTE: do __NOT__ include extension). |
+| `-e GUIDE_FILENAME=guide-kr` | Change filename of output (NOTE: do __NOT__ include extension). |
 | `-e BACKUP_COUNT=7` | Amount of backups to keep before overwriting old ones. |
 | `-e RESTART_TIME=00:00` | Set the target time for which the script should wait before grabbing again. |
 | `-e TZ=Etc/UTC` | Specify a timezone to use, see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List). |
 | `-v /data` | Location of target file, make sure your streaming software can access this path. |
-| `-v /tv` | Location of TV library on disk (See note in Application setup) |
+| `-v /config` | Location of config folder, which stores temporary back-up files |
 
 ## Usage
 Apart from the setup, everything else is automatic! It will immediately start the grabbing process once the container is run, after which it will wait until the next occurrence of the specified time. This will repeat indefinitely.

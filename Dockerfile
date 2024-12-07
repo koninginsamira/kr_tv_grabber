@@ -9,9 +9,10 @@ COPY ./ ./
 # Prepare entrypoint
 RUN chmod a+x run.sh
 
+VOLUME /config
 VOLUME /data
 
-ENV GUIDE_FILE=guide-kr
+ENV GUIDE_FILENAME=guide-kr
 ENV BACKUP_COUNT=7
 ENV RESTART_TIME=00:00
 
