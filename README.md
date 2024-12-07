@@ -1,5 +1,5 @@
 # XMLTV Grabber for Korean TV
-Did you find a way to stream Korean television (perhaps through [this amazing resource](https://github.com/iptv-org/iptv?tab=readme-ov-file#grouped-by-language)), but you're still in need of a program guide to find out when Music Bank will be on?
+Did you find a way to stream Korean television (perhaps through [this amazing resource](https://github.com/iptv-org/iptv?tab=readme-ov-file#grouped-by-language)), but you're still in need of a program guide to find out when Music Bank will air exactly?
 
 __You're in luck!__
 
