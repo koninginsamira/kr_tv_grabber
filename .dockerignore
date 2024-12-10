@@ -1,3 +1,6 @@
+**/docker_build.sh
+**/docker_run.sh
+**/docker_remove.sh
 **/.dockerignore
 **/.git
 **/.gitignore

@@ -1,28 +1,47 @@
 FROM ubuntu:24.04
 FROM node:22.11.0
 
-WORKDIR /
+# Define build arguments with default values
+ARG USER=appuser
+ARG GROUP=appgroup
 
-# Install tini for proper signal handling
-RUN apt-get update && apt-get install -y tini && apt-get clean
+# Set user
+USER root
+
+# Update package lists
+RUN apt-get update && \
+    # Install guso for lightweight user switching,
+    # tini for proper signal handling,
+    # and ping for checking the internet connection
+    apt-get install -y gosu tini iputils-ping && \
+    # Clean up
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy files to the container
+WORKDIR /
 COPY ./ ./
 
-# Make the script executable
-RUN chmod a+x run.sh
+# Make scripts executable
+RUN chmod a+x /entrypoint.sh /app/app.sh
 
 # Declare volumes
 VOLUME /config
 VOLUME /data
 
 # Set environment variables
+ENV PUID=1000
+ENV PGID=1000
 ENV GUIDE_FILENAME=guide-kr
 ENV BACKUP_COUNT=7
 ENV RESTART_TIME=00:00
 
 # Use tini as the entrypoint to handle signals
-ENTRYPOINT ["/usr/bin/tini", "--"]
+# ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Specify the command to run your script
-CMD ["bash", "./run.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD [ \
+    "-u", "${USER}", "-g", "${GROUP}", \
+    "-f", "/app", "-f", "/config", "-f", "/data", \
+    "-a", "bash /app/app.sh" \
+]

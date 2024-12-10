@@ -3,10 +3,6 @@
 CONFIG_PATH="config"
 GUIDE_PATH="data"
 
-# Create folders if they do not exist
-mkdir -p $CONFIG_PATH;
-mkdir -p $GUIDE_PATH;
-
 # Check if the required variables are set
 if [ -z "$GUIDE_FILENAME" ] || [ -z "$BACKUP_COUNT" ] || [ -z "$RESTART_TIME" ]; then
     echo "Error: GUIDE_FILENAME, BACKUP_COUNT or RESTART_TIME is not set."
@@ -48,9 +44,11 @@ if [ -f "$TMP_FILE" ]; then
 fi
 
 # Check internet connection
-echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1
+HOST="1.1.1.1"
+PING_CMD="ping -c 1 $HOST"
+DNS_CMD="getent hosts $HOST"
 
-if [ $? -eq 0 ]; then
+if $DNS_CMD > /dev/null && $PING_CMD &> /dev/null; then
     # Grab guide
     npx tv_grab_kr --days 3 --output "$TMP_FILE"
 
