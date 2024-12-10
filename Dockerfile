@@ -11,9 +11,8 @@ USER root
 # Update package lists
 RUN apt-get update && \
     # Install guso for lightweight user switching,
-    # tini for proper signal handling,
     # and ping for checking the internet connection
-    apt-get install -y gosu tini iputils-ping && \
+    apt-get install -y gosu iputils-ping && \
     # Clean up
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -34,9 +33,6 @@ ENV PGID=1000
 ENV GUIDE_FILENAME=guide-kr
 ENV BACKUP_COUNT=7
 ENV RESTART_TIME=00:00
-
-# Use tini as the entrypoint to handle signals
-# ENTRYPOINT ["/usr/bin/tini", "--"]
 
 # Specify the command to run your script
 ENTRYPOINT ["/entrypoint.sh"]
