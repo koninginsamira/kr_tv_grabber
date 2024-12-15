@@ -1,5 +1,7 @@
 #!/bin/bash
 
+echo "Grabbing guide..."
+
 CONFIG_PATH="config"
 GUIDE_PATH="data"
 
@@ -64,19 +66,3 @@ if $DNS_CMD > /dev/null && $PING_CMD &> /dev/null; then
 else
     echo "Error: Could not connect to the internet. No guide file was created"
 fi
-
-# Calculate time left until next RESTART_TIME
-CURRENT_EPOCH=$(date +%s)
-TARGET_EPOCH=$(date -d "$RESTART_TIME today" +%s)
-if (( CURRENT_EPOCH >= TARGET_EPOCH )); then
-    TARGET_EPOCH=$(date -d "$RESTART_TIME tomorrow" +%s)
-fi
-
-SLEEP_SECONDS=$(( $TARGET_EPOCH - $CURRENT_EPOCH ))
-
-# Wait for specific time
-echo "Waiting for $SLEEP_SECONDS seconds until the next $RESTART_TIME..."
-sleep $SLEEP_SECONDS
-
-# Restart
-exec bash ./run.sh

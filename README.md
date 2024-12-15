@@ -20,12 +20,16 @@ services:
     container_name: kr_tv_grabber
     image: ghcr.io/koninginsamira/kr_tv_grabber:main
     restart: unless-stopped
+    ports:
+      - 3500:3500
     environment:
       - PUID=1000
       - PGID=1000
       - GUIDE_FILENAME=guide-kr # optional
       - BACKUP_COUNT=7 # optional
       - RESTART_TIME=00:00 # optional
+      - HTTP=FALSE # optional
+      - HTTP_PORT=3500 # optional
       - TZ=Etc/UTC
     volumes:
       - /etc/localtime:/etc/localtime:ro
@@ -38,11 +42,14 @@ services:
 ```bash
 docker run -d \
   --name=kr_tv_grabber \
+  -p 3500:3500 `# optional` \
   -e PUID=1000 \
   -e PGID=1000 \
   -e GUIDE_FILENAME=guide-kr `# optional` \
   -e BACKUP_COUNT=7 `# optional` \
   -e RESTART_TIME=00:00 `# optional` \
+  -e HTTP=TRUE `# optional` \
+  -e HTTP_PORT=3500 `# optional` \
   -e TZ=Etc/UTC \
   -v /etc/localtime:/etc/localtime:ro \
   -v /path/to/guide/location:/data \
@@ -54,11 +61,14 @@ docker run -d \
 ## Parameters
 | Parameter | Function |
 | :----: | --- |
+| `-p 3500:3500` | Opens the port when hosting the guide via URL. |
 | `-e PUID=1000` | For UserID. |
 | `-e PGID=1000` | For GroupID. |
 | `-e GUIDE_FILENAME=guide-kr` | Change filename of output (NOTE: do __NOT__ include extension). |
 | `-e BACKUP_COUNT=7` | Amount of backups to keep before overwriting old ones. |
 | `-e RESTART_TIME=00:00` | Set the target time for which the script should wait before grabbing again. |
+| `-e HTTP=FALSE` | Toggle hosting the guide through a local URL (e.g. localhost:<port>/<guide-filename>.xml). |
+| `-e HTTP_PORT=3500` | Change the internal port (recommended instead of Docker's own mapping, in favour of proper logging). |
 | `-e TZ=Etc/UTC` | Specify a timezone to use, see this [list](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List). |
 | `-v /data` | Location of target file, make sure your streaming software can access this path. |
 | `-v /config` | Location of config folder, which stores temporary back-up files |

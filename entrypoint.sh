@@ -6,12 +6,16 @@ APP_APP_PATHS=()
 # - 'u' for the username
 # - 'g' for the group name
 # - 'f' for the app folder
+# - 'r' for toggling running the app as root
+# - 'b' for running commands before the app
 # - 'a' for the app command
-while getopts "u:g:f:a:" opt; do
+while getopts "u:g:f:r:b:a:" opt; do
   case $opt in
     u) USER="$OPTARG" ;;
     g) GROUP="$OPTARG" ;;
     f) APP_APP_PATHS+=("$OPTARG") ;;
+    r) ROOT_MODE="$OPTARG" ;;
+    b) BEFORE="$OPTARG" ;;
     a) APP="$OPTARG" ;;
     *)
       echo "Error: '$opt' was not recognised as a valid option"
@@ -42,4 +46,12 @@ for APP_PATH in "${APP_APP_PATHS[@]}"; do
     fi
 done
 
-exec gosu "$PUID:$PGID" $APP
+if [ -n "$BEFORE" ]; then
+    source $BEFORE
+fi
+
+if [[ "${ROOT_MODE^^}" == "TRUE" ]]; then
+    exec $APP
+else
+    exec gosu "$PUID:$PGID" $APP
+fi
