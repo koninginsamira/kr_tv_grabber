@@ -13,8 +13,9 @@ RUN apt-get update && \
     # Install guso for lightweight user switching,
     # cron for repeating grab at set time,
     # ping for checking the internet connection,
-    # and busybox for hosting the file via URL
-    apt-get install -y cron gosu iputils-ping busybox && \
+    # busybox for hosting the file via URL,
+    # and xmlstarlet for modifying XML files
+    apt-get install -y cron gosu iputils-ping busybox xmlstarlet && \
     # Clean up
     apt-get clean && rm -rf /var/lib/apt/lists/*
 

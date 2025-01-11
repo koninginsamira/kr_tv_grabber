@@ -56,9 +56,18 @@ if $DNS_CMD > /dev/null && $PING_CMD &> /dev/null; then
 
     # Check for error
     if [ $? -eq 0 ]; then
-        # Move new guide to target location
+        # Use xmlstarlet to add a <date> tag to each <programme>
+        xmlstarlet ed -L -s '//programme' -t elem -n date -v "" "$TMP_FILE"
+
+        # Fill new <date> tag with date from @start
+        xmlstarlet ed -L -u '//programme/date' -x "substring(//programme/@start, 1, 8)" "$TMP_FILE"
+
+        # Move generated guide to target location
         cp "$TMP_FILE" "$TARGET_FILE"
+
+        # Remove leftover files
         rm "$TMP_FILE"
+        
         echo "Guide file created at '$TARGET_FILE'"
     else
         echo "Error: Something went wrong while grabbing, no guide file was created"
