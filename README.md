@@ -3,7 +3,7 @@ Did you find a way to stream Korean television (perhaps through [this amazing re
 
 __You're in luck!__
 
-This script, and encompassing Docker container, will periodically grab the program guide for various Korean TV channels (using the wonderful [tv_grab_kr](https://github.com/axfree/tv_grab_kr)) and save it to a specified location in XMLTV format. This is especially useful in conjunction with streaming software such as [Plex](https://www.plex.tv/), [Emby](https://emby.media/) or [Jellyfin](https://jellyfin.org/). Either through [Threadfin](https://github.com/Threadfin/Threadfin) or directly.
+This script, and encompassing Docker container, will periodically grab the program guide for various Korean TV channels (using the wonderful [tv_grab_kr](https://github.com/axfree/tv_grab_kr)), after which it will save it to a specified location and/or host it through a specified port in XMLTV format. This is especially useful in conjunction with streaming software such as [Plex](https://www.plex.tv/), [Emby](https://emby.media/) or [Jellyfin](https://jellyfin.org/). Either through tools like [Threadfin](https://github.com/Threadfin/Threadfin) or directly.
 
 ## Requirements
 * [Docker](https://www.docker.com/)
