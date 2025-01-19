@@ -26,7 +26,7 @@ fi
 CRON_TIME="$MINUTE $HOUR * * *"
 
 # Write the cron job
-echo -e "$CRON_TIME gosu "$PUID:$PGID" bash "$@"" > /app/cron
+echo -e "$CRON_TIME gosu "$PUID:$PGID" "$@"" > /app/cron
 
 # Apply the cron job
 echo "Adding '"$@"' as cron job at $RESTART_TIME..."
