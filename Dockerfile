@@ -21,7 +21,7 @@ RUN pip install -r ./requirements.txt
 RUN rm -rf ./requirements.txt    
 
 # Make scripts executable
-RUN chmod a+x /entrypoint.sh /app/before.sh /app/cron.sh /app/host.sh /app/run.sh
+RUN chmod a+x /entrypoint.sh /app/before.sh /app/cron.sh /app/host.sh /app/run.sh /app/healthcheck.sh
 
 # Declare volumes
 VOLUME /config
@@ -49,6 +49,9 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
 
 # Expose port
 EXPOSE 3500
+
+# Add healthcheck for host
+HEALTHCHECK --interval=10s --timeout=10s --start-period=5s --retries=3 CMD /app/healthcheck.sh
 
 # Specify the command to run your script
 ENTRYPOINT ["/entrypoint.sh"]
