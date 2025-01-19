@@ -26,8 +26,8 @@ fi
 CRON_TIME="$MINUTE $HOUR * * *"
 
 # Write the cron job
-echo -e "$CRON_TIME gosu "$PUID:$PGID" bash /app/grab.sh" > /app/cron
+echo -e "$CRON_TIME gosu "$PUID:$PGID" bash "$@"" > /app/cron
 
 # Apply the cron job
-echo "Adding grabber as cron job at $RESTART_TIME..."
+echo "Adding '"$@"' as cron job at $RESTART_TIME..."
 supercronic -passthrough-logs /app/cron

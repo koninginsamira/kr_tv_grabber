@@ -9,12 +9,10 @@ if [[ "${HTTP^^}" == "TRUE" ]]; then
 
     # Start HTTP server
     echo "Starting HTTP server on port $HTTP_PORT..."
-    busybox httpd -p $HTTP_PORT -h /data
+    python3 -m http.server $HTTP_PORT --directory "$@"
 
     # Check for error
-    if [ $? -eq 0 ]; then
-        echo "HTTP server is online on port $HTTP_PORT"
-    else
+    if [ $? -ne 0 ]; then
         echo "Error: HTTP server could not be started"
     fi
 fi

@@ -1,30 +1,27 @@
-FROM ubuntu:24.04
-FROM node:22.11.0
-
-# Define build arguments with default values
-ARG USER=appuser
-ARG GROUP=appgroup
+FROM node:latest
+FROM python:latest
 
 # Set user
 USER root
-
-# Update package lists
-RUN apt-get update && \
-    # Install guso for lightweight user switching,
-    # cron for repeating grab at set time,
-    # ping for checking the internet connection,
-    # busybox for hosting the file via URL,
-    # and xmlstarlet for modifying XML files
-    apt-get install -y cron gosu iputils-ping busybox xmlstarlet && \
-    # Clean up
-    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy files to the container
 WORKDIR /
 COPY ./ ./
 
+# Install Linux packages
+RUN apt-get update && \
+    # Install cron for repeating grab at set time,
+    # and guso for lightweight user switching
+    apt-get install -y cron gosu && \
+    # Clean up
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN pip install -r ./requirements.txt
+RUN rm -rf ./requirements.txt    
+
 # Make scripts executable
-RUN chmod a+x /entrypoint.sh /app/cron.sh /app/grab.sh /app/host.sh /app/run.sh
+RUN chmod a+x /entrypoint.sh /app/before.sh /app/cron.sh /app/host.sh /app/run.sh
 
 # Declare volumes
 VOLUME /config
@@ -56,8 +53,8 @@ EXPOSE 3500
 # Specify the command to run your script
 ENTRYPOINT ["/entrypoint.sh"]
 CMD [ \
-    "-u", "${USER}", "-g", "${GROUP}", \
+    "-u", "grabber", "-g", "grabber", \
     "-f", "/app", "-f", "/config", "-f", "/data", \
-    "-r", "true", \
+    "-b", "bash /app/before.sh", \
     "-a", "bash /app/run.sh" \
 ]
