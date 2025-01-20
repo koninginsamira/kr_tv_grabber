@@ -1,43 +1,32 @@
-FROM ubuntu:24.04
-FROM node:22.11.0
-
-# Define build arguments with default values
-ARG USER=appuser
-ARG GROUP=appgroup
+# ===========================================
+# Python setup
+# ===========================================
+FROM python:3 AS python
 
 # Set user
 USER root
 
-# Update package lists
-RUN apt-get update && \
-    # Install guso for lightweight user switching,
-    # cron for repeating grab at set time,
-    # ping for checking the internet connection,
-    # busybox for hosting the file via URL,
-    # and xmlstarlet for modifying XML files
-    apt-get install -y cron gosu iputils-ping busybox xmlstarlet && \
-    # Clean up
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Copy files to the container
 WORKDIR /
-COPY ./ ./
 
-# Make scripts executable
-RUN chmod a+x /entrypoint.sh /app/cron.sh /app/grab.sh /app/host.sh /app/run.sh
+# Create Python environment
+RUN python -m venv /.venv
+ENV PATH="/.venv/bin:$PATH"
 
-# Declare volumes
-VOLUME /config
-VOLUME /data
+# Install Python packages
+COPY requirements.txt .
+RUN pip install -r ./requirements.txt
 
-# Set environment variables
-ENV PUID=1000
-ENV PGID=1000
-ENV GUIDE_FILENAME=guide-kr
-ENV BACKUP_COUNT=7
-ENV RESTART_TIME=00:00
-ENV HTTP=FALSE
-ENV HTTP_PORT=3500
+# ===========================================
+# NodeJS setup
+# ===========================================
+FROM node:23
+
+# Install Linux packages
+RUN apt-get update && \
+    # Install cron for repeating grab at set time,
+    # guso for lightweight user switching,
+    # and python3 for the app itself
+    apt-get install -y cron gosu python3
 
 # Install Supercronic
 ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.33/supercronic-linux-amd64 \
@@ -50,14 +39,56 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
     && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
     && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
+WORKDIR /
+
+# Get Python environment
+COPY --from=python /.venv /.venv
+ENV PATH="/.venv/bin:$PATH"
+ENV NODE_ENV=container
+
+# # Install Node packages
+# COPY package*.json .
+# RUN npm install
+
+# ===========================================
+# App setup
+# ===========================================
+COPY . .
+
+# Make scripts executable
+RUN chmod a+x /entrypoint.sh
+RUN chmod a+x /app/scripts/*
+
+# Declare volumes
+VOLUME /config
+VOLUME /data
+
+# Set environment variables
+ENV PUID=1000
+ENV PGID=1000
+ENV GUIDE_FILENAME=guide-kr
+ENV BACKUP_COUNT=7
+ENV RESTART_TIME=00:00
+ENV HISTORY_THRESHOLD=3
+ENV FUTURE_THRESHOLD=3
+ENV HTTP=FALSE
+ENV HTTP_PORT=3500
+
+# Clean up
+RUN rm -rf ./requirements.txt package*.json
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Expose port
 EXPOSE 3500
+
+# Add healthcheck for host
+HEALTHCHECK --interval=10s --timeout=10s --start-period=5s CMD /app/scripts/healthcheck.sh
 
 # Specify the command to run your script
 ENTRYPOINT ["/entrypoint.sh"]
 CMD [ \
-    "-u", "${USER}", "-g", "${GROUP}", \
+    "-u", "grabber", "-g", "grabber", \
     "-f", "/app", "-f", "/config", "-f", "/data", \
-    "-r", "true", \
-    "-a", "bash /app/run.sh" \
+    "-b", "bash /app/scripts/before.sh", \
+    "-a", "bash /app/scripts/run.sh" \
 ]

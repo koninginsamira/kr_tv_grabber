@@ -41,26 +41,58 @@ else
 fi
 
 # Remove leftover files
-if [ -f "$TMP_FILE" ]; then
-    rm "$TMP_FILE"
-fi
+# if [ -f "$TMP_FILE" ]; then
+#     rm "$TMP_FILE"
+#     echo "Leftover files were removed"
+# fi
 
 # Check internet connection
 HOST="1.1.1.1"
 PING_CMD="ping -c 1 $HOST"
 DNS_CMD="getent hosts $HOST"
 
+echo "Connecting to the internet..."
 if $DNS_CMD > /dev/null && $PING_CMD &> /dev/null; then
     # Grab guide
-    npx tv_grab_kr --days 3 --output "$TMP_FILE"
+    # npx tv_grab_kr --days "$FUTURE_THRESHOLD" --output "$TMP_FILE"
 
     # Check for error
     if [ $? -eq 0 ]; then
-        # Use xmlstarlet to add a <date> tag to each <programme>
+        echo "Guide was grabbed"
+
+        # Add a <date> tag to each <programme>
         xmlstarlet ed -L -s '//programme' -t elem -n date -v "" "$TMP_FILE"
 
         # Fill new <date> tag with date from @start
         xmlstarlet ed -L -u '//programme/date' -x "substring(//programme/@start, 1, 8)" "$TMP_FILE"
+
+        echo "Copied programme start date to separate date tag"
+
+        # Add old programmes to new guide
+        if [ -n ${NEW_BACKUP+x} ]; then
+            CURRENT_DATE=$(date --utc +%Y%m%d%H%M%S)
+            HISTORY_THRESHOLD_DATE=$(date --utc -d "$HISTORY_THRESHOLD days ago" +%Y%m%d%H%M%S)
+
+            # Extract the <programme> tags from the back-up file
+            xmlstarlet sel -t -m '//programme' -v '@start' -n "$NEW_BACKUP" | \
+
+            while read START_TIME; do
+                # Extract the date and time part (first 14 characters) and timezone part (last 5 characters)
+                TIMESTAMP=$(echo "$START_TIME" | sed 's/\(..............\) \(....\)/\1/')
+                TIMEZONE=$(echo "$START_TIME" | sed 's/.\{14\}//')
+
+                # Convert the timestamp (YYYYMMDDHHMMSS) into a comparable format using date
+                TIMESTAMP_COMPARABLE=$(date -d "${TIMESTAMP:0:4}-${TIMESTAMP:4:2}-${TIMESTAMP:6:2} ${TIMESTAMP:8:2}:${TIMESTAMP:10:2}:${TIMESTAMP:12:2} ${TIMEZONE}" +%Y%m%d%H%M%S)
+
+                # Compare the timestamp from the old guide with the given threshold
+                if [[ "$TIMESTAMP_COMPARABLE" > "$HISTORY_THRESHOLD_DATE" ]]; then
+                    # Extract the full <programme> element if the condition is met
+                    xmlstarlet sel -t -m "//programme[@start='$START_TIME']" -c . "$NEW_BACKUP"
+                fi
+            done | \
+            # Now merge valid <programme> elements into file1.xml
+            xmlstarlet ed -s /root -t elem -n "dummy" -v "$(cat)" "$TMP_FILE" > "$(TMP_FILE)001"
+        fi
 
         # Move generated guide to target location
         cp "$TMP_FILE" "$TARGET_FILE"
