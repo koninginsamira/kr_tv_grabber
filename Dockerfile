@@ -46,10 +46,6 @@ COPY --from=python /.venv /.venv
 ENV PATH="/.venv/bin:$PATH"
 ENV NODE_ENV=container
 
-# # Install Node packages
-# COPY package*.json .
-# RUN npm install
-
 # ===========================================
 # App setup
 # ===========================================

@@ -5,7 +5,7 @@ import modules.xml as xml
 
 
 def grab(destination_file: str, future_threshold: int = 3):
-    subprocess.run(["npx", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file], check=True)
+    subprocess.run(["npx", "-y", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file], check=True)
 
     print("Guide was grabbed")
 
