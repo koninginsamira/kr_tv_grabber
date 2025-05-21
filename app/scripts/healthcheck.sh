@@ -12,7 +12,7 @@ if [[ "${HTTP^^}" == "TRUE" ]]; then
 fi
 
 # Check if the cron job is running
-if ! pgrep cron > /dev/null; then
+if ! pgrep supercronic > /dev/null; then
     echo "Cron job is not running"
     exit 1
 fi

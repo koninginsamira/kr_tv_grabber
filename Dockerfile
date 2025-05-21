@@ -8,7 +8,7 @@ WORKDIR /
 # Install system packages
 RUN apt-get update && apt-get install -y \
     python3 python3-venv python3-pip \
-    curl cron \
+    curl cron procps \
     gosu \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
