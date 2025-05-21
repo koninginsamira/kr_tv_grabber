@@ -11,7 +11,7 @@ sudo docker run -d \
   -e BACKUP_COUNT=7 `# optional` \
   -e RESTART_TIME="$RESTART_TIME" `# optional` \
   -e HTTP=TRUE `# optional` \
-  -e HTTP_PORT=3500 `# optional` \
+  -e HTTP_PORT=3501 `# optional` \
   -e TZ=Europe/Amsterdam \
   -v /etc/localtime:/etc/localtime:ro \
   -v ./docker/data:/data \

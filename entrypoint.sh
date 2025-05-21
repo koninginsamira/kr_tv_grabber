@@ -69,5 +69,5 @@ fi
 if [[ "${ROOT_MODE^^}" == "TRUE" ]]; then
     exec $APP
 else
-    exec gosu "$PUID:$PGID" $APP
+    exec gosu "$PUID:$PGID" env PATH="$PATH" $APP
 fi

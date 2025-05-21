@@ -1,13 +1,72 @@
+from datetime import datetime, timedelta
+import operator
+import os
 import subprocess
+from typing import Literal
 from xml.etree import ElementTree as ET
+
+import requests
 
 import modules.xml as xml
 
 
-def grab(destination_file: str, future_threshold: int = 3):
-    subprocess.run(["npx", "-y", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file], check=True)
+def grab(destination_file: str, history_threshold: int = 3, future_threshold: int = 3):
+    subprocess.run(["npx", "-y", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file + "1"], check=True)
 
-    print("Guide was grabbed")
+    print("Grabbed guides from tv_grab_kr plugin.")
+
+    kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=12015"
+    response = requests.get(kbs_world_url)
+
+    if response.status_code != 200:
+        print(f"Failed to download additional guide from \"{kbs_world_url}\". Status code: {response.status_code}")
+    else:
+        print(f"Downloaded additional guide from \"{kbs_world_url}\".")
+
+        kbs_world_guide = ET.fromstring(response.content)
+
+        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(hours=1))
+
+        ET.ElementTree(kbs_world_guide).write(destination_file + "2", encoding="utf-8", xml_declaration=True)
+
+        print("Timeshifted programmes in additional guide by -1 hours")
+
+    merge(destination_file + "1", destination_file + "2", destination_file, history_threshold)
+
+    print(f"Merged new guides into one file: \"{destination_file}\"")
+
+    os.remove(destination_file + "1")
+    os.remove(destination_file + "2")
+
+
+def timeshift(
+    source: ET.Element, attributes: list[str],
+    operation: Literal["add", "subtract", "multiply", "divide", "mod", "power"],
+    difference: timedelta
+) -> ET.Element:
+    for programme in source.findall(".//programme"):
+        for attr in attributes:
+            original_value = programme.get(attr)
+
+            if original_value:
+                operations = {
+                    "add": operator.add,
+                    "subtract": operator.sub,
+                    "multiply": operator.mul,
+                    "divide": operator.truediv,
+                    "mod": operator.mod,
+                    "power": operator.pow
+                }
+
+                if operation not in operations:
+                    raise ValueError(f"Unsupported operation: {operation}")
+
+                dt = operations[operation](datetime.strptime(original_value[:14], "%Y%m%d%H%M%S"), difference)
+
+                new_value = dt.strftime("%Y%m%d%H%M%S") + original_value[14:]
+                programme.set(attr, new_value)
+
+    return source
 
 
 def merge(old_guide_file: str, new_guide_file: str, target_file: str = "", history_threshold: int = 3):
@@ -34,7 +93,7 @@ def merge(old_guide_file: str, new_guide_file: str, target_file: str = "", histo
     print(f"Merged guides to '{target_file}'")
 
 
-def write(target_file, merged_root):
+def write(target_file: str, merged_root: ET.Element):
     tree = ET.ElementTree(merged_root)
     tree.write(target_file, encoding='utf-8', xml_declaration=True)
 
@@ -48,7 +107,7 @@ def append(merged_root: ET.Element, channels: list[ET.Element], programmes: list
 
 
 def merge_channels(old_root: ET.Element, new_root: ET.Element) -> list[ET.Element]:
-    channels = {}
+    channels: dict[str | None, ET.Element] = {}
 
     new_channels = new_root.findall(".//channel")
     old_channels = old_root.findall(".//channel")
@@ -65,11 +124,11 @@ def merge_channels(old_root: ET.Element, new_root: ET.Element) -> list[ET.Elemen
     old_channel_count = len(channels) - new_channel_count
     print(f"Extracted {old_channel_count} channels from the old guide")
 
-    return channels.values()
+    return list(channels.values())
 
 
 def merge_programmes(old_root: ET.Element, new_root: ET.Element, history_threshold: int = 3) -> list[ET.Element]:
-    programmes = []
+    programmes: list[ET.Element] = []
 
     new_programmes = new_root.findall(".//programme")
     old_programmes = old_root.findall(".//programme")

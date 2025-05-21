@@ -56,7 +56,7 @@ def run():
         print(f"Guide file '{TARGET_FILE}' does not yet exist")
 
     if is_connected(HOST):
-        grab(TMP_FILE, FUTURE_THRESHOLD)
+        grab(TMP_FILE, HISTORY_THRESHOLD, FUTURE_THRESHOLD)
 
         if backup_file:
             merge(backup_file, TMP_FILE, history_threshold=HISTORY_THRESHOLD)
