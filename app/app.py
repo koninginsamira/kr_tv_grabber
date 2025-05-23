@@ -30,7 +30,7 @@ def run():
         print(f"Guide file is already being grabbed, or has been grabbed recently. No guide file will be created")
         exit(0)
 
-    update_last_run(LAST_RUN_FILE)
+    update_last_run(LAST_RUN_FILE, "started")
 
     # Check if the file exists
     backup_file = ""
@@ -64,6 +64,8 @@ def run():
         shutil.move(TMP_FILE, TARGET_FILE)
         
         print(f"Guide file created at '{TARGET_FILE}'")
+
+        update_last_run(LAST_RUN_FILE, "finished")
     else:
         print("Error: Could not connect to the internet. No guide file was created")
 
