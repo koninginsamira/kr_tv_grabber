@@ -57,7 +57,7 @@ ENV HTTP_PORT=3500
 EXPOSE 3500
 
 # Add healthcheck for host
-HEALTHCHECK --interval=10s --timeout=10s --start-period=5s CMD /app/scripts/healthcheck.sh
+HEALTHCHECK --start-period=5s --timeout=10s --interval=10s --retries=10 CMD /app/scripts/healthcheck.sh
 
 # Specify the command to run your script
 ENTRYPOINT ["/entrypoint.sh"]
