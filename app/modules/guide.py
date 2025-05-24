@@ -15,7 +15,8 @@ def grab(destination_file: str, history_threshold: int = 3, future_threshold: in
 
     print("Grabbed guides from tv_grab_kr plugin.")
 
-    kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=12015"
+    # kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=12015" # Philippines
+    kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=6530" # Russian Federation
     response = requests.get(kbs_world_url)
 
     if response.status_code != 200:
@@ -25,11 +26,12 @@ def grab(destination_file: str, history_threshold: int = 3, future_threshold: in
 
         kbs_world_guide = ET.fromstring(response.content)
 
-        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(hours=1))
+        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(days=1))
+        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "add", timedelta(hours=2))
 
         ET.ElementTree(kbs_world_guide).write(destination_file + "2", encoding="utf-8", xml_declaration=True)
 
-        print("Timeshifted programmes in additional guide by -1 hours")
+        print("Timeshifted programmes in additional guide by -1 day and +2 hours")
 
     merge(destination_file + "1", destination_file + "2", destination_file, history_threshold)
 
