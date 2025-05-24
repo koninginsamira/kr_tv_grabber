@@ -6,7 +6,7 @@ from typing import Literal
 def has_run_recently(last_run_file: str, recent_threshold: timedelta):
     if os.path.exists(last_run_file):
         with open(last_run_file, "r") as file:
-            last_run_str = file.read().strip()
+            last_run_str = file.readline().strip()
 
         last_run_time = datetime.fromisoformat(last_run_str)
 
