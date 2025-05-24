@@ -27,7 +27,6 @@ def grab(destination_file: str, history_threshold: int = 3, future_threshold: in
         kbs_world_guide = ET.fromstring(response.content)
 
         kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(days=1))
-        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "add", timedelta(hours=2))
 
         ET.ElementTree(kbs_world_guide).write(destination_file + "2", encoding="utf-8", xml_declaration=True)
 
