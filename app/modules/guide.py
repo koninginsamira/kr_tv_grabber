@@ -11,33 +11,37 @@ import modules.xml as xml
 
 
 def grab(destination_file: str, history_threshold: int = 3, future_threshold: int = 3):
-    subprocess.run(["npx", "-y", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file + "1"], check=True)
+    subprocess.run(["npx", "-y", "tv_grab_kr", "--days", f"{future_threshold}", "--output", destination_file], check=True)
 
     print("Grabbed guides from tv_grab_kr plugin.")
 
-    # kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=12015" # Philippines
-    kbs_world_url = "https://epg.pw/api/epg.xml?lang=en&channel_id=6530" # Russian Federation
-    response = requests.get(kbs_world_url)
+    for day in range(-history_threshold, future_threshold + 1):
+        date = datetime.now() + timedelta(days=day)
+        date_str = date.strftime("%Y%m%d")
 
-    if response.status_code != 200:
-        print(f"Failed to download additional guide from \"{kbs_world_url}\". Status code: {response.status_code}")
-    else:
-        print(f"Downloaded additional guide from \"{kbs_world_url}\".")
+        print(f"Downloading additional guide for {date_str}...")
 
-        kbs_world_guide = ET.fromstring(response.content)
+        url = f"https://epg.pw/api/epg.xml?lang=en&date={date_str}&channel_id=6530"
+        response = requests.get(url)
 
-        kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(days=1))
+        if response.status_code != 200:
+            print(f"Failed to download additional guide from \"{url}\". Status code: {response.status_code}")
+        else:
+            print(f"Downloaded additional guide from \"{url}\".")
 
-        ET.ElementTree(kbs_world_guide).write(destination_file + "2", encoding="utf-8", xml_declaration=True)
+            kbs_world_guide = ET.fromstring(response.content)
 
-        print("Timeshifted programmes in additional guide by -1 day and +2 hours")
+            kbs_world_guide = timeshift(kbs_world_guide, ["start", "stop"], "subtract", timedelta(days=1))
 
-    merge(destination_file + "1", destination_file + "2", destination_file, history_threshold)
+            ET.ElementTree(kbs_world_guide).write(destination_file + "_additional", encoding="utf-8", xml_declaration=True)
 
-    print(f"Merged new guides into one file: \"{destination_file}\"")
+            print("Timeshifted programmes in additional guide by -1 day and +2 hours")
 
-    os.remove(destination_file + "1")
-    os.remove(destination_file + "2")
+            merge(destination_file, destination_file + "_additional", destination_file, history_threshold)
+
+            print(f"Merged new guides into one file: \"{destination_file}\"")
+
+        os.remove(destination_file + "_additional")
 
 
 def timeshift(
