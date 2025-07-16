@@ -64,6 +64,7 @@ ENTRYPOINT ["/entrypoint.sh"]
 CMD [ \
     "-u", "grabber", "-g", "grabber", \
     "-f", "/app", "-f", "/config", "-f", "/data", \
+    "-t", "/app/scripts/title.sh", \
     "-b", "/app/scripts/before.sh", \
     "-a", "/app/scripts/run.sh" \
 ]

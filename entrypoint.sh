@@ -5,6 +5,7 @@ USER=""
 GROUP=""
 APP_PATHS=()
 ROOT_MODE=""
+TITLE=""
 BEFORE=""
 APP=""
 
@@ -13,14 +14,16 @@ APP=""
 # - 'g' for the group name
 # - 'f' for the app folder
 # - 'r' for toggling running the app as root
+# - 't' for showing the title
 # - 'b' for running commands before the app
 # - 'a' for the app command
-while getopts "u:g:f:r:b:a:" opt; do
+while getopts "u:g:f:r:t:b:a:" opt; do
   case $opt in
     u) USER="$OPTARG" ;;
     g) GROUP="$OPTARG" ;;
     f) APP_PATHS+=("$OPTARG") ;;
     r) ROOT_MODE="$OPTARG" ;;
+    t) TITLE="$OPTARG" ;;
     b) BEFORE="$OPTARG" ;;
     a) APP="$OPTARG" ;;
     *)
@@ -30,6 +33,9 @@ while getopts "u:g:f:r:b:a:" opt; do
   esac
 done
 
+$TITLE
+
+echo ""
 echo "Running docker container..."
 echo ""
 
@@ -45,8 +51,6 @@ if ! getent group "$PGID" >/dev/null; then
     fi
 fi
 echo "Group '"$GROUP"' with ID '"$PGID"' will be used."
-
-echo ""
 
 # Ensure the user exists
 if ! id -u "$PUID" >/dev/null 2>&1; then
