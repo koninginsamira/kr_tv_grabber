@@ -30,27 +30,38 @@ while getopts "u:g:f:r:b:a:" opt; do
   esac
 done
 
+echo "Running docker container..."
+echo ""
+
 # Ensure the group exists
 if ! getent group "$PGID" >/dev/null; then
     groupadd -g "$PGID" "$GROUP"
 
     if [ $? -eq 0 ]; then
-        echo "Added new group '"$GROUP"' with ID '"$PGID"'"
+        echo "Added new group '"$GROUP"' with ID '"$PGID"'."
     else
+        echo "Could not add group '"$GROUP"' with ID '"$PGID"'."
         exit 1
     fi
 fi
+echo "Group '"$GROUP"' with ID '"$PGID"' will be used."
+
+echo ""
 
 # Ensure the user exists
 if ! id -u "$PUID" >/dev/null 2>&1; then
     useradd -u "$PUID" -g "$PGID" -m "$USER"
 
     if [ $? -eq 0 ]; then
-        echo "Added new user '"$USER"' with ID '"$PUID"'"
+        echo "Added new user '"$USER"' with ID '"$PUID"'."
     else
+        echo "Could not add user '"$USER"' with ID '"$PUID"'."
         exit 1
     fi
 fi
+echo "User '"$USER"' with ID '"$PUID"' will be used."
+
+echo ""
 
 # Set permissions
 for APP_PATH in "${APP_PATHS[@]}"; do
@@ -62,9 +73,16 @@ for APP_PATH in "${APP_PATHS[@]}"; do
     fi
 done
 
+echo ""
+
 if [ -n "$BEFORE" ]; then
+    echo "Running commands before starting the app..."
     $BEFORE
 fi
+
+echo ""
+echo "Starting the app..."
+echo ""
 
 if [[ "${ROOT_MODE^^}" == "TRUE" ]]; then
     exec $APP
