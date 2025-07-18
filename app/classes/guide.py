@@ -56,7 +56,7 @@ class Guide:
         return self
 
     def of_path(self, path: str):
-        self.history.append(f"Based on: \"{self.path}\".")
+        self.history.append(f"Based on: \"{path}\".")
         self.path = path
         if os.path.isfile(path):
             self.tree = ET.parse(path)
