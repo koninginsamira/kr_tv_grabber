@@ -1,20 +1,42 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta
 import operator
 import os
 from pathlib import Path
-import shutil
+import requests
 import subprocess
 from typing import Literal
-from urllib import request
 from xml.etree import ElementTree as ET
 
-from app.modules import xml
+from modules import xml
 
 
 class Guide:
-    path: str
-    tree: ET.ElementTree[ET.Element[str]]
-    history: list[str]
+    path: str = ""
+    _tree: ET.ElementTree[ET.Element] | None = None
+    history: list[str] = []
+
+    @property
+    def tree(self) -> ET.ElementTree[ET.Element] | None:
+        return self._tree
+
+    @tree.setter
+    def tree(self, tree: ET.ElementTree[ET.Element]):
+        root = tree.getroot()
+        programmes = root.findall(".//programme")
+
+        for programme in programmes:
+            has_date = bool(programme.findtext("date"))
+            start_time = programme.get("start", "")
+
+            if start_time and not has_date:
+                new_date_tag = ET.SubElement(programme, "date")
+                start_date = start_time[:8]
+
+                new_date_tag.text = start_date
+
+        self._tree = tree
 
     @property
     def dir(self) -> str:
@@ -27,49 +49,67 @@ class Guide:
     def __init__(self):
         self.history = ["Created a new guide instance."]
 
-    def of(self, tree: ET.ElementTree[ET.Element[str]]):
+    def of_tree(self, tree: ET.ElementTree[ET.Element]):
+        self.history.append("Based on a tree instance.")
         self.path = ""
         self.tree = tree
-        self.history.append("Based on a tree instance.")
         return self
 
-    def of(self, path: str):
-        self.path = path
-        self.tree = ET.parse(path)
+    def of_path(self, path: str):
         self.history.append(f"Based on: \"{self.path}\".")
+        self.path = path
+        if os.path.isfile(path):
+            self.tree = ET.parse(path)
+            self.history.append("File does not exist yet, starting with empty guide.")
         return self
     
     def exists(self):
         return os.path.isfile(self.path)
     
-    def backup(self, limit: int) -> type["Guide"]:
-        if not self.exists():
-            raise Exception(f"Cannot backup a guide file that does not exist, at path: \"{self.path}\".")
+    def copy(self) -> "Guide":
+        copy = Guide()
 
-        for i in range(1, limit + 1):
-            max_number_width = len(str(limit))
-            backup_file = os.path.join(self.dir, f"{self.filename}.bak{i:0{max_number_width}}")
+        copy.path = self.path
+        copy._tree = self._tree
+        copy.history = self.history
 
-            if not os.path.exists(backup_file):
-                shutil.copyfile(self.path, backup_file)
-                
-                # Remove the next backup file if it exists
-                next_backup = os.path.join(self.dir, f"{self.filename}.bak{(i % limit) + 1:0{max_number_width}}")
-                if os.path.isfile(next_backup):
-                    os.remove(next_backup)
-                    self.history.append(f"The maximum backup count ({limit}) has been reached, \"{next_backup}\" has been removed.")
+        self.history.append("This guide was copied.")
+        copy.history.append("This guide is a copy.")
 
-                return Guide().of(backup_file)
+        return copy
             
-    def write(self):
-        if not self.exists():
-            raise Exception(f"Cannot write to a guide file that does not exist, at path: \"{self.path}\".")
-        
-        self.tree.write(self.path, encoding="utf-8", xml_declaration=True)
-        self.history.append(f"Wrote guide file to: \"{self.path}\".")
+    def write(self, path: str | None = None):
+        path = path if path is not None else self.path
+
+        if not path:
+            raise Exception("This guide does not have a path set. Make sure to pass a path with the write() function!")
+
+        if not self.tree:
+            raise Exception("This guide does not have a tree set. Make sure to populate it using one of its methods!")
+
+        self.tree.write(path, encoding="utf-8", xml_declaration=True)
+        self.history.append(f"Wrote guide file to: \"{path}\".")
+
         return self
             
-    def merge(self, b: type["Guide"], history_threshold: int = None):
+    def merge(self, b: "Guide", history_threshold: int | None = None) -> "Guide":
+        if self.tree:
+            self.merge_channels(b)
+            self.merge_programmes(b, history_threshold)
+        elif b.tree:
+            self.tree = b.tree
+            self.history.append("The guide to merge to was empty, data from guide to merge from will be used.")
+        else:
+            self.history.append("Both guides were empty, nothing was merged.")
+
+        return self
+
+    def merge_channels(self, b: "Guide") -> "Guide":
+        if not self.tree:
+            raise Exception("The guide to merge to does not have a tree set. Make sure to populate it using one of its methods!")
+        if not b.tree:
+            raise Exception("The guide to merge from does not have a tree set. Make sure to populate it using one of its methods!")
+
         a_root = self.tree.getroot()
         b_root = b.tree.getroot()
         merged_root = ET.Element(
@@ -78,61 +118,73 @@ class Guide:
             generator_info_name="kr_tv_grabber",
             generator_info_url="mailto:programmeertol@zomerplaag.nl")
         
-        channels = merge_channels(b_root, a_root)
-        programmes = merge_programmes(b_root, a_root, history_threshold)
+        b_channels = b_root.findall(".//channel")
+        channels: dict[str | None, ET.Element] = {}
 
-        for channel in channels:
+        for el in a_root:
+            if el.tag == "channel":
+                # Add channel
+                channels[el.get("id")] = el
+            else:
+                # Keep non-channel element
+                merged_root.append(el)
+
+        a_count = len(channels)
+        self.history.append(f"Extracted {a_count} channels from the guide to merge to.")
+
+        b_count = 0
+        duplicate_count = 0
+        for channel in b_channels:
+            b_count += 1
+            if channel.get("id") in channels:
+                duplicate_count += 1
+
+            # Add or overwrite channel
+            channels[channel.get("id")] = channel
+
+        self.history.append(f"Extracted {b_count} channels from the guide to merge from.")
+        self.history.append(f"{duplicate_count} channels were overwritten because they already existed.")
+
+        # Move channels to tree
+        for channel in channels.values():
             merged_root.append(channel)
-
-        for programme in programmes:
-            merged_root.append(programme)
 
         self.tree = ET.ElementTree(merged_root)
 
-        def merge_channels(old_root: ET.Element, new_root: ET.Element) -> list[ET.Element]:
-            channels: dict[str | None, ET.Element] = {}
+        return self
 
-            new_channels = new_root.findall(".//channel")
-            old_channels = old_root.findall(".//channel")
+    def merge_programmes(self, b: "Guide", history_threshold: int | None = None) -> "Guide":
+        if not self.tree:
+            raise Exception("The guide to merge to does not have a tree set. Make sure to populate it using one of its methods!")
+        if not b.tree:
+            raise Exception("The guide to merge from does not have a tree set. Make sure to populate it using one of its methods!")
 
-            for channel in new_channels:
-                channels[channel.get("id")] = channel
+        a_root = self.tree.getroot()
+        b_root = b.tree.getroot()
+        merged_root = ET.Element(
+            "tv",
+            source_info_name="EPGI",
+            generator_info_name="kr_tv_grabber",
+            generator_info_url="mailto:programmeertol@zomerplaag.nl")
+        
+        b_programmes = b_root.findall(".//programme")
+        programmes: list[ET.Element] = []
 
-            new_channel_count = len(channels)
-            self.history.append(f"Extracted {new_channel_count} channels from the new guide")
+        for b_programme in b_programmes:
+            programmes.append(b_programme)
 
-            for channel in old_channels:
-                channels[channel.get("id")] = channel
+        b_count = len(programmes)
+        self.history.append(f"Extracted {b_count} programmes from the guide to be merged from" + (f", at \"{b.path}\"." if b.path else "."))
 
-            old_channel_count = len(channels) - new_channel_count
-            self.history.append(f"Extracted {old_channel_count} channels from the old guide")
+        duplicate_count = 0
+        old_count = 0
 
-            return list(channels.values())
-
-        def merge_programmes(old_root: ET.Element, new_root: ET.Element, history_threshold: int = None) -> list[ET.Element]:
-            programmes: list[ET.Element] = []
-
-            new_programmes = new_root.findall(".//programme")
-            old_programmes = old_root.findall(".//programme")
-
-            for new_programme in new_programmes:
-                add_date(new_programme)
-                programmes.append(new_programme)
-
-            new_count = len(programmes)
-            
-            self.history.append(f"Extracted {new_count} programmes from the new guide")
-
-            duplicate_count = 0
-            old_count = 0
-
-            for old_programme in old_programmes:
-                add_date(old_programme)
-
+        for el in a_root:
+            if el.tag == "programme":
                 def is_duplicate_programme(element: ET.Element) -> bool:
-                    return xml.is_duplicate(element, old_programme, ["start", "stop", "channel"])
+                    return xml.is_duplicate(element, el, ["start", "stop", "channel"])
 
-                is_recent = xml.is_recent(old_programme, history_threshold, attribute="start") if history_threshold != None else True
+                is_recent = xml.is_recent(el, history_threshold, attribute="start") if history_threshold != None else True
                 is_duplicate = xml.find_first(programmes, is_duplicate_programme) is not None
 
                 if not is_recent:
@@ -142,27 +194,26 @@ class Guide:
                     duplicate_count += 1
                 
                 if is_recent and not is_duplicate:
-                    programmes.append(old_programme)
+                    # Add programme
+                    programmes.append(el)
+            else:
+                # Keep non-programme element
+                merged_root.append(el)
 
-            old_programme_count = len(programmes) - new_count
+        a_count = len(programmes) - b_count
+        self.history.append(f"Extracted {a_count} programmes from the guide to merge to.")
+        self.history.append(f"{old_count} programmes were skipped because they exceeded the history threshold of {history_threshold} days.")
+        self.history.append(f"{duplicate_count} programmes were skipped because they already existed.")
 
-            self.history.append(f"Extracted {old_programme_count} programmes from the old guide")
-            self.history.append(f"{old_count} programmes were skipped because they exceeded the history threshold of {history_threshold} days")
-            self.history.append(f"{duplicate_count} programmes were skipped because they already existed")
+        # Move programmes to tree
+        for programme in programmes:
+            merged_root.append(programme)
 
-            return programmes
-        
-        def add_date(programme: ET.Element):
-            has_date = bool(programme.findtext("date"))
-            start_time = programme.get("start", "")
+        self.tree = ET.ElementTree(merged_root)
 
-            if start_time and not has_date:
-                new_date_tag = ET.SubElement(programme, "date")
-                start_date = start_time[:8]
+        return self
 
-                new_date_tag.text = start_date
-
-    def grab(self, history_threshold: int, future_threshold: int) -> type["Guide"]:
+    def grab(self, history_threshold: int, future_threshold: int) -> "Guide":
         plugin_guide_path = os.path.join(self.dir, f"{self.filename}.tmp")
         subprocess.run([
             "npx",
@@ -170,25 +221,26 @@ class Guide:
             "--days", f"{future_threshold}",
             "--output", plugin_guide_path
         ], check=True)
-        plugin_guide = Guide().of(plugin_guide_path)
+        plugin_guide = Guide().of_path(plugin_guide_path)
 
         self.history.append("Grabbed guides from tv_grab_kr plugin.")
 
         self.merge(plugin_guide, history_threshold)
+        os.remove(plugin_guide_path)
 
         for day in range(-history_threshold, future_threshold + 1):
             date = datetime.now() + timedelta(days=day)
             date_str = date.strftime("%Y%m%d")
 
             url = f"https://epg.pw/api/epg.xml?lang=en&date={date_str}&channel_id=6530"
-            response = request.get(url)
+            response = requests.get(url)
 
             if response.status_code != 200:
                 self.history.append(f"Failed to download additional guide from \"{url}\". Status code: {response.status_code}")
             else:
                 self.history.append(f"Downloaded additional guide from \"{url}\".")
 
-                additional_guide = Guide().of(ET.fromstring(response.content))
+                additional_guide = Guide().of_tree(ET.ElementTree(ET.fromstring(response.content)))
                 additional_guide.timeshift(["start", "stop"], "subtract", timedelta(days=1))
 
                 self.history.append("Timeshifted programmes in additional guide by -1 day.")
@@ -202,7 +254,10 @@ class Guide:
             attributes: list[str],
             operation: Literal["add", "subtract", "multiply", "divide", "mod", "power"],
             difference: timedelta
-    ) -> type["Guide"]:
+    ) -> "Guide":
+        if not self.tree:
+            raise Exception("This guide does not have a tree set. Make sure to populate it using one of its methods!")
+
         root = self.tree.getroot()
 
         for programme in root.findall(".//programme"):

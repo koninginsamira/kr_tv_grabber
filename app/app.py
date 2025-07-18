@@ -1,7 +1,7 @@
 import os
 from datetime import timedelta
 
-from app.classes.guide import Guide
+from classes.guide import Guide
 from modules.connection import is_connected
 from modules.last_run import has_run_recently, update_last_run
 
@@ -27,18 +27,36 @@ LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 def run():
     if has_run_recently(LAST_RUN_FILE, LAST_RUN_THRESHOLD):
         print(f"Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created.")
-        exit(0)
+        return
 
     update_last_run(LAST_RUN_FILE, "started")
 
-    guide = Guide().of(TARGET_FILE)
-    
+    guide = Guide().of_path(TARGET_FILE)
+    backup: Guide | None = None
+
     if guide.exists():
-        print(f"Guide file \"{guide.path}\" already exists.")
-        backup = guide.backup(BACKUP_COUNT)
-        backup.write()
+        print(f"[backup] Guide file \"{guide.path}\" already exists.")
+        backup = guide.copy()
+
+        for i in range(1, BACKUP_COUNT + 1):
+            max_number_width = len(str(BACKUP_COUNT))
+            backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{i:0{max_number_width}}")
+
+            if not os.path.exists(backup_path):
+                backup.write(backup_path)
+
+                for entry in backup.history:
+                    print("[backup] " + entry)
+                
+                # Remove the next backup file if it exists
+                next_backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{(i % BACKUP_COUNT) + 1:0{max_number_width}}")
+                if os.path.isfile(next_backup_path):
+                    os.remove(next_backup_path)
+                    print(f"[backup] The maximum backup count ({BACKUP_COUNT}) has been reached, \"{next_backup_path}\" has been removed.")
+                
+                break
     else:
-        print(f"Guide file \"{TARGET_FILE}\" does not yet exist.")
+        print(f"[backup] Guide file \"{TARGET_FILE}\" does not yet exist.")
 
     print("")
 
@@ -51,9 +69,7 @@ def run():
         guide.write()
         
         for entry in guide.history:
-            print(entry)
-
-        os.remove(TMP_FILE)
+            print("[guide] " + entry)
 
         update_last_run(LAST_RUN_FILE, "finished")
     else:
@@ -61,7 +77,10 @@ def run():
 
 
 if __name__ == "__main__":
+    code = 1
+
     try:
+        print("")
         run()
         code = 0
     except Exception as e:
@@ -70,8 +89,5 @@ if __name__ == "__main__":
         print(e)
 
         update_last_run(LAST_RUN_FILE, "error")
-
-        code = 1
     finally:
-        os.remove(TMP_FILE)
         exit(code)
