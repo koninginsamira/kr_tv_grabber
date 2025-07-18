@@ -58,9 +58,12 @@ class Guide:
     def of_path(self, path: str):
         self.history.append(f"Based on: \"{path}\".")
         self.path = path
+
         if os.path.isfile(path):
             self.tree = ET.parse(path)
+        else:
             self.history.append("File does not exist yet, starting with empty guide.")
+            
         return self
     
     def exists(self):
