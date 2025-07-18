@@ -90,4 +90,5 @@ if __name__ == "__main__":
 
         update_last_run(LAST_RUN_FILE, "error")
     finally:
+        print("")
         exit(code)
