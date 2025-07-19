@@ -78,7 +78,7 @@ def run(notif: apprise.Apprise):
 
         notif.notify(
             title="A new guide was grabbed!",
-            body=f"{guide.channels.count} channels were added, with {guide.programmes.count} programmes in total."
+            body=f"{len(guide.channels)} channels were added, with {len(guide.programmes)} programmes in total."
         )
 
         update_last_run(LAST_RUN_FILE, "finished")
