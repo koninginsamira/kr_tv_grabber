@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 from datetime import datetime, timedelta
 import operator
 import os
@@ -45,6 +46,20 @@ class Guide:
     @property
     def filename(self) -> str:
         return Path(self.path).stem
+    
+    @property
+    def channels(self) -> list[ET.Element]:
+        if self.tree:
+            return self.tree.getroot().findall(".//channel")
+        else:
+            return []
+        
+    @property
+    def programmes(self) -> list[ET.Element]:
+        if self.tree:
+            return self.tree.getroot().findall(".//programme")
+        else:
+            return []
 
     def __init__(self):
         self.history = ["Created a new guide instance."]
@@ -70,16 +85,16 @@ class Guide:
         return os.path.isfile(self.path)
     
     def copy(self) -> "Guide":
-        copy = Guide()
+        copy_guide = Guide()
 
-        copy.path = self.path
-        copy._tree = self._tree
-        copy.history = self.history
+        copy_guide.path = self.path
+        copy_guide._tree = copy.deepcopy(self.tree)
+        copy_guide.history = self.history.copy()
 
         self.history.append("This guide was copied.")
-        copy.history.append("This guide is a copy.")
+        copy_guide.history.append("This guide is a copy.")
 
-        return copy
+        return copy_guide
             
     def write(self, path: str | None = None):
         path = path if path is not None else self.path
