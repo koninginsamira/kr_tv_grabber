@@ -1,6 +1,8 @@
 import os
 from datetime import timedelta
 
+import apprise
+
 from classes.guide import Guide
 from modules.connection import is_connected
 from modules.last_run import has_run_recently, update_last_run
@@ -19,14 +21,17 @@ BACKUP_COUNT = int(os.getenv("BACKUP_COUNT", "7"))
 RESTART_TIME = os.getenv("RESTART_TIME", "00:00")
 FUTURE_THRESHOLD = int(os.getenv("FUTURE_THRESHOLD", "3"))
 HISTORY_THRESHOLD = int(os.getenv("HISTORY_THRESHOLD", "3"))
+NOTIF_AGENTS = os.getenv("NOTIF_AGENTS", "").split(",")
 
 TARGET_FILE = os.path.join(GUIDE_PATH, f"{GUIDE_FILENAME}.xml")
 TMP_FILE = os.path.join(CONFIG_PATH, f"{GUIDE_FILENAME}.tmp")
 LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 
-def run():
+def run(notif: apprise.Apprise):
     if has_run_recently(LAST_RUN_FILE, LAST_RUN_THRESHOLD):
-        print(f"Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created.")
+        msg = "Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created."
+        print(msg)
+        notif.notify(body=msg)
         return
 
     update_last_run(LAST_RUN_FILE, "started")
@@ -49,7 +54,7 @@ def run():
                     print("[backup] " + entry)
                 
                 # Remove the next backup file if it exists
-                next_backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{(i % BACKUP_COUNT) + 1:0{max_number_width}}")
+                next_backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{((i + 1) % BACKUP_COUNT):0{max_number_width}}")
                 if os.path.isfile(next_backup_path):
                     os.remove(next_backup_path)
                     print(f"[backup] The maximum backup count ({BACKUP_COUNT}) has been reached, \"{next_backup_path}\" has been removed.")
@@ -71,24 +76,38 @@ def run():
         for entry in guide.history:
             print("[guide] " + entry)
 
+        notif.notify(
+            title="A new guide was grabbed!",
+            body=f"{guide.channels.count} channels were added, with {guide.programmes.count} programmes in total."
+        )
+
         update_last_run(LAST_RUN_FILE, "finished")
     else:
         print("Error: Could not connect to the internet. No guide file was created.")
 
 
 if __name__ == "__main__":
-    code = 1
+    notif = apprise.Apprise()
+    for agent in NOTIF_AGENTS:
+        notif.add(agent)
 
     try:
         print("")
-        run()
-        code = 0
+        run(notif)
+        print("")
+
+        exit(0)
     except Exception as e:
         print("Error: An error has occurred while running this program. It will now exit.")
         print()
         print(e)
+        print("")
+
+        notif.notify(
+            title="An error has occured while running this program!",
+            body=f"{e}"
+        )
 
         update_last_run(LAST_RUN_FILE, "error")
-    finally:
-        print("")
-        exit(code)
+
+        exit(1)
