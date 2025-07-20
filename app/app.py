@@ -1,8 +1,7 @@
 import os
 from datetime import timedelta
 
-import apprise
-
+from app.classes.notif import Notif
 from classes.guide import Guide
 from modules.connection import is_connected
 from modules.last_run import has_run_recently, update_last_run
@@ -27,7 +26,7 @@ TARGET_FILE = os.path.join(GUIDE_PATH, f"{GUIDE_FILENAME}.xml")
 TMP_FILE = os.path.join(CONFIG_PATH, f"{GUIDE_FILENAME}.tmp")
 LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 
-def run(notif: apprise.Apprise):
+def run(notif: Notif):
     if has_run_recently(LAST_RUN_FILE, LAST_RUN_THRESHOLD):
         msg = "Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created."
         print(msg)
@@ -87,7 +86,7 @@ def run(notif: apprise.Apprise):
 
 
 if __name__ == "__main__":
-    notif = apprise.Apprise()
+    notif = Notif()
     for agent in NOTIF_AGENTS:
         notif.add(agent)
 
