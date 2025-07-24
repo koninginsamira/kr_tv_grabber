@@ -15,7 +15,7 @@ def find_first(
 def find(
         elements: list[Element],
         match: Callable[[Element], bool]) -> list[Element]:
-    matches = []
+    matches: list[Element] = []
 
     for current_element in elements:
         if match(current_element):
@@ -53,10 +53,16 @@ def is_recent(
     if attribute:
         element_time_str = element.get(attribute)
     elif tag:
-        element_time_str = element.find(tag).text
+        tagged_element = element.find(tag)
+
+        if tagged_element:
+            element_time_str = tagged_element.text
     else:
         raise Exception(
             "To check if an element is recent, it needs to look for either an attribute or a tag with a date. Neither was given")
+
+    if not element_time_str:
+        return True
 
     element_time = datetime.strptime(element_time_str, timestamp_format)
     current_time = datetime.now(tz=timezone.utc)
