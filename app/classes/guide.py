@@ -189,7 +189,10 @@ class Guide:
         programmes: list[ET.Element] = []
 
         for b_programme in b_programmes:
-            programmes.append(b_programme)
+            is_recent = xml.is_recent(b_programme, history_threshold, attribute="start") if history_threshold != None else True
+
+            if is_recent:
+                programmes.append(b_programme)
 
         b_count = len(programmes)
         self.history.append(f"Extracted {b_count} programmes from the guide to be merged from" + (f", at \"{b.path}\"." if b.path else "."))
