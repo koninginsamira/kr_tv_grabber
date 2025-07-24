@@ -1,7 +1,7 @@
 import os
-from datetime import timedelta
+from datetime import timedelta, datetime
 
-from app.classes.notif import Notif
+from classes.notif import Notif
 from classes.guide import Guide
 from modules.connection import is_connected
 from modules.last_run import has_run_recently, update_last_run
@@ -15,18 +15,24 @@ GUIDE_PATH = "data"
 LAST_RUN_THRESHOLD = timedelta(minutes=30)
 
 # Get environment variables
-GUIDE_FILENAME = os.getenv("GUIDE_FILENAME", "guide-kr")
+TVDB_KEY = os.getenv("TVDB_KEY", "")
+
 BACKUP_COUNT = int(os.getenv("BACKUP_COUNT", "7"))
 RESTART_TIME = os.getenv("RESTART_TIME", "00:00")
+
 FUTURE_THRESHOLD = int(os.getenv("FUTURE_THRESHOLD", "3"))
 HISTORY_THRESHOLD = int(os.getenv("HISTORY_THRESHOLD", "3"))
+
 NOTIF_AGENTS = os.getenv("NOTIF_AGENTS", "").split(",")
 
+GUIDE_FILENAME = os.getenv("GUIDE_FILENAME", "guide-kr")
 TARGET_FILE = os.path.join(GUIDE_PATH, f"{GUIDE_FILENAME}.xml")
 TMP_FILE = os.path.join(CONFIG_PATH, f"{GUIDE_FILENAME}.tmp")
 LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 
 def run(notif: Notif):
+    start_time = datetime.now()
+
     if has_run_recently(LAST_RUN_FILE, LAST_RUN_THRESHOLD):
         msg = "Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created."
         print(msg)
@@ -35,8 +41,13 @@ def run(notif: Notif):
 
     update_last_run(LAST_RUN_FILE, "started")
 
-    guide = Guide().of_path(TARGET_FILE)
+    guide = Guide()
     backup: Guide | None = None
+
+    if TVDB_KEY:
+        guide.with_tvdb(TVDB_KEY)
+
+    guide.of_path(TARGET_FILE)
 
     if guide.exists():
         print(f"[backup] Guide file \"{guide.path}\" already exists.")
@@ -72,12 +83,20 @@ def run(notif: Notif):
 
         guide.write()
         
+        duration = datetime.now() - start_time
+        total_seconds = int(duration.total_seconds())
+        hours = total_seconds // 3600
+        minutes = total_seconds % (60 * 60) // 60
+        seconds = total_seconds % 60
+
         for entry in guide.history:
             print("[guide] " + entry)
+        print("")
+        print(f"Runtime: {hours}h {minutes}m {seconds}s.")
 
         notif.notify(
             title="A new guide was grabbed!",
-            body=f"{len(guide.channels)} channels were added, with {len(guide.programmes)} programmes in total."
+            body=f"{len(guide.channels)} channels were added, with {len(guide.programmes)} programmes in total. Runtime: {hours}h {minutes}m {seconds}s."
         )
 
         update_last_run(LAST_RUN_FILE, "finished")

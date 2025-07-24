@@ -5,17 +5,21 @@ from datetime import datetime, timedelta
 import operator
 import os
 from pathlib import Path
+import re
 import requests
 import subprocess
 from typing import Literal
 from xml.etree import ElementTree as ET
 
+from classes.tvdb import TVDB
+from modules import regex
 from modules import xml
 
 
 class Guide:
     path: str = ""
     _tree: ET.ElementTree[ET.Element] | None = None
+    tvdb: TVDB | None = None
     history: list[str] = []
 
     @property
@@ -24,19 +28,6 @@ class Guide:
 
     @tree.setter
     def tree(self, tree: ET.ElementTree[ET.Element]):
-        root = tree.getroot()
-        programmes = root.findall(".//programme")
-
-        for programme in programmes:
-            has_date = bool(programme.findtext("date"))
-            start_time = programme.get("start", "")
-
-            if start_time and not has_date:
-                new_date_tag = ET.SubElement(programme, "date")
-                start_date = start_time[:8]
-
-                new_date_tag.text = start_date
-
         self._tree = tree
 
     @property
@@ -81,6 +72,10 @@ class Guide:
             
         return self
     
+    def with_tvdb(self, key: str):
+        self.tvdb = TVDB(key)
+        return self
+    
     def exists(self):
         return os.path.isfile(self.path)
     
@@ -89,12 +84,70 @@ class Guide:
 
         copy_guide.path = self.path
         copy_guide._tree = copy.deepcopy(self.tree)
+        copy_guide.tvdb = self.tvdb
         copy_guide.history = self.history.copy()
 
         self.history.append("This guide was copied.")
         copy_guide.history.append("This guide is a copy.")
 
         return copy_guide
+    
+    def parse(self) -> "Guide":
+        if not self.tree:
+            raise Exception("This guide does not have a tree set. Make sure to populate it using one of its methods!")
+
+        root = self.tree.getroot()
+        programmes = root.findall(".//programme")
+        dates_added = 0
+        series_added = 0
+
+        for programme in programmes:
+            has_date = bool(programme.findtext("date"))
+            start_time = programme.get("start", "")
+
+            if start_time and not has_date:
+                new_subtitle_tag = ET.SubElement(programme, "date")
+                start_date = start_time[:8]
+
+                new_subtitle_tag.text = start_date
+
+                dates_added += 1
+
+            has_episode = bool(programme.findtext("episode-num"))
+            if self.tvdb and not has_episode:
+                programme_title = programme.findtext("title")
+
+                if programme_title:
+                    show_name = programme_title
+                    show_name = re.sub(r"(\s*\[[^\]]+\]\s*)?", "", show_name)
+                    show_name = re.sub(r"(\s*т\/с\s*)?", "", show_name)
+                    show_name = re.sub(r"(?:\s*[\.\-:]?\s*ep\.?\s*\d+|\s+\d+)?$", "", show_name)
+
+                    episode_number = regex.find_first(r"(?!19[0-9]{2}$|[2-9][0-9]{3}$)[0-9]+$", programme_title)
+                    
+                    if show_name and episode_number:
+                        show = next(iter(self.tvdb.search_series(show_name, country="kor")), None)
+
+                        if show:
+                            episodes = self.tvdb.get_episodes(str(show["tvdb_id"])) or []
+                            episode = next((ep for ep in episodes if int(ep["number"]) == int(episode_number)), None)
+
+                            if episode:
+                                has_subtitle = bool(programme.findtext("sub-title"))
+
+                                if not has_subtitle:
+                                    new_subtitle_tag = ET.SubElement(programme, "sub-title")
+                                    new_subtitle_tag.text = show_name
+
+                                new_episode_tag = ET.SubElement(programme, "episode-num")
+                                new_episode_tag.text = f"S{episode["seasonNumber"]}E{episode["number"]}"
+
+                                series_added += 1
+
+        self.history.append(f"{dates_added} separate date tags added.")
+        self.history.append(f"{series_added} series found and parsed.")
+
+        return self
             
     def write(self, path: str | None = None):
         path = path if path is not None else self.path
@@ -104,6 +157,8 @@ class Guide:
 
         if not self.tree:
             raise Exception("This guide does not have a tree set. Make sure to populate it using one of its methods!")
+
+        self.parse()
 
         self.tree.write(path, encoding="utf-8", xml_declaration=True)
         self.history.append(f"Wrote guide file to: \"{path}\".")
