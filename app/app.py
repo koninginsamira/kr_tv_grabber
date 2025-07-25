@@ -27,7 +27,7 @@ NOTIF_AGENTS = os.getenv("NOTIF_AGENTS", "").split(",")
 
 GUIDE_FILENAME = os.getenv("GUIDE_FILENAME", "guide-kr")
 TARGET_FILE = os.path.join(GUIDE_PATH, f"{GUIDE_FILENAME}.xml")
-TMP_FILE = os.path.join(CONFIG_PATH, f"{GUIDE_FILENAME}.tmp")
+CACHE_FILE = os.path.join(CONFIG_PATH, "tvdb.cache")
 LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 
 def run(notif: Notif):
@@ -45,7 +45,7 @@ def run(notif: Notif):
     backup: Guide | None = None
 
     if TVDB_KEY:
-        guide.with_tvdb(TVDB_KEY)
+        guide.with_tvdb(TVDB_KEY, CACHE_FILE)
 
     guide.of_path(TARGET_FILE)
 

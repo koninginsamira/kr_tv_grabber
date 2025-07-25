@@ -72,8 +72,8 @@ class Guide:
             
         return self
     
-    def with_tvdb(self, key: str):
-        self.tvdb = TVDB(key)
+    def with_tvdb(self, key: str, cache_path: str | None = None):
+        self.tvdb = TVDB(key).with_cache(cache_path)
         return self
     
     def exists(self):

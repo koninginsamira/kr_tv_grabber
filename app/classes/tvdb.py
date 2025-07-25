@@ -2,7 +2,7 @@ from datetime import timedelta, datetime
 from typing import Literal, TypedDict
 import tvdb_v4_official # type: ignore
 
-from modules.cache import Cache, cache
+from modules.cache import Cache, cache, cache_file
 
 
 class RemoteId(TypedDict):
@@ -54,21 +54,48 @@ class Episode(TypedDict):
 
 class TVDB:
     _api: tvdb_v4_official.TVDB
-    _cache: Cache = []
+    _cache: Cache | None
     _cache_lifespan: timedelta = timedelta(weeks=1)
 
     def __init__(self, key: str):
         self._api = tvdb_v4_official.TVDB(key)
 
-        self.search_series = cache(
-            cache=self._cache,
-            lifespan=self._cache_lifespan
-        )(self.search_series)
+    def with_cache(
+        self,
+        path: str | None = None,
+        lifespan: timedelta | None = None
+    ) -> "TVDB":
+        use_path = path is not None
+        if not use_path:
+            self._cache = []
+            
+        if lifespan:
+            self._cache_lifespan = lifespan
 
-        self.get_episodes = cache(
-            cache=self._cache,
-            lifespan=self._cache_lifespan
-        )(self.get_episodes)
+        for name in dir(self):
+            if name.startswith("__") or name == "with_cache":
+                continue
+
+            attr = getattr(self, name)
+            if callable(attr):
+                fn = getattr(attr, "__func__", attr)
+
+                if path is not None:
+                    cached_fn = cache_file(
+                        path=path,
+                        lifespan=self._cache_lifespan
+                    )(fn)
+                elif self._cache is not None:
+                    cached_fn = cache(
+                        cache=self._cache,
+                        lifespan=self._cache_lifespan
+                    )(fn)
+                else:
+                    raise Exception("Neither a cache file or a cache list exist. What happened?")
+
+                setattr(self, name, cached_fn.__get__(self, self.__class__))
+
+        return self
 
     def search_series(
         self,
