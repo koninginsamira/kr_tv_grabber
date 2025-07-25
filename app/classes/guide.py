@@ -140,7 +140,7 @@ class Guide:
                                     new_subtitle_tag.text = show_name
 
                                 new_episode_tag = ET.SubElement(programme, "episode-num")
-                                new_episode_tag.text = f"S{episode["seasonNumber"]}E{episode["number"]}"
+                                new_episode_tag.text = f"S{episode['seasonNumber']}E{episode['number']}"
 
                                 series_added += 1
 
