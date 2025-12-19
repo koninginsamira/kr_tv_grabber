@@ -38,7 +38,6 @@ RUN chmod a+x /entrypoint.sh && \
     chmod a+x /app/scripts/*
 
 # Declare volumes
-VOLUME /config
 VOLUME /data
 
 # Set environment variables
@@ -46,9 +45,7 @@ ENV NODE_ENV=container
 ENV PUID=1000
 ENV PGID=1000
 ENV GUIDE_FILENAME=guide-kr
-ENV BACKUP_COUNT=7
 ENV RESTART_TIME=00:00
-ENV HISTORY_THRESHOLD=3
 ENV FUTURE_THRESHOLD=3
 ENV HTTP=FALSE
 ENV HTTP_PORT=3500
@@ -63,7 +60,7 @@ HEALTHCHECK --start-period=5s --interval=10s --retries=1000 CMD /app/scripts/hea
 ENTRYPOINT ["/entrypoint.sh"]
 CMD [ \
     "-u", "grabber", "-g", "grabber", \
-    "-f", "/app", "-f", "/config", "-f", "/data", \
+    "-f", "/app", "-f", "/data", \
     "-t", "/app/scripts/title.sh", \
     "-b", "/app/scripts/before.sh", \
     "-m", "/app/scripts/run.sh", \

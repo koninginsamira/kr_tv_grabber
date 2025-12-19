@@ -1,107 +1,60 @@
 import os
 from datetime import timedelta, datetime
+import subprocess
 
 from classes.notif import Notif
-from classes.guide import Guide
 from modules.connection import is_connected
 from modules.last_run import has_run_recently, update_last_run
 
 # Set constants
 HOST = "1.1.1.1"
-
-CONFIG_PATH = "config"
-GUIDE_PATH = "data"
-
+CONFIG_PATH = "data"
 LAST_RUN_THRESHOLD = timedelta(minutes=30)
 
 # Get environment variables
-TVDB_KEY = os.getenv("TVDB_KEY", "")
-
-BACKUP_COUNT = int(os.getenv("BACKUP_COUNT", "7"))
-RESTART_TIME = os.getenv("RESTART_TIME", "00:00")
-
 FUTURE_THRESHOLD = int(os.getenv("FUTURE_THRESHOLD", "3"))
-HISTORY_THRESHOLD = int(os.getenv("HISTORY_THRESHOLD", "3"))
-
 NOTIF_AGENTS = os.getenv("NOTIF_AGENTS", "").split(",")
 
 GUIDE_FILENAME = os.getenv("GUIDE_FILENAME", "guide-kr")
-TARGET_FILE = os.path.join(GUIDE_PATH, f"{GUIDE_FILENAME}.xml")
-CACHE_FILE = os.path.join(CONFIG_PATH, "tvdb.cache")
+TARGET_FILE = os.path.join(CONFIG_PATH, f"{GUIDE_FILENAME}.xml")
 LAST_RUN_FILE = os.path.join(CONFIG_PATH, "last_run.txt")
 
 def run(notif: Notif):
     start_time = datetime.now()
 
     if has_run_recently(LAST_RUN_FILE, LAST_RUN_THRESHOLD):
-        msg = "Guide file is already being grabbed, or has been grabbed recently. No new guide file will be created."
+        msg = "Guide file is already being grabbed, or has been grabbed recently. No new guide file will be grabbed."
         print(msg)
         notif.notify(body=msg)
         return
 
     update_last_run(LAST_RUN_FILE, "started")
 
-    guide = Guide()
-    backup: Guide | None = None
-
-    if TVDB_KEY:
-        guide.with_tvdb(TVDB_KEY, CACHE_FILE)
-
-    guide.of_path(TARGET_FILE)
-
-    if guide.exists():
-        print(f"[backup] Guide file \"{guide.path}\" already exists.")
-        backup = guide.copy()
-
-        for i in range(1, BACKUP_COUNT + 1):
-            max_number_width = len(str(BACKUP_COUNT))
-            backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{i:0{max_number_width}}")
-
-            if not os.path.exists(backup_path):
-                backup.write(backup_path)
-
-                for entry in backup.history:
-                    print("[backup] " + entry)
-                
-                # Remove the next backup file if it exists
-                next_backup_path = os.path.join(CONFIG_PATH, f"{guide.filename}.bak{((i + 1) % BACKUP_COUNT):0{max_number_width}}")
-                if os.path.isfile(next_backup_path):
-                    os.remove(next_backup_path)
-                    print(f"[backup] The maximum backup count ({BACKUP_COUNT}) has been reached, \"{next_backup_path}\" has been removed.")
-                
-                break
-    else:
-        print(f"[backup] Guide file \"{TARGET_FILE}\" does not yet exist.")
-
-    print("")
-
     if is_connected(HOST):
-        guide.grab(HISTORY_THRESHOLD, FUTURE_THRESHOLD)
+        subprocess.run([
+            "npx",
+            "-y", "tv_grab_kr",
+            "--days", f"{FUTURE_THRESHOLD}",
+            "--output", TARGET_FILE
+        ], check=True)
 
-        if backup and backup.exists():
-            guide.merge(backup, HISTORY_THRESHOLD)
-
-        guide.write()
-        
         duration = datetime.now() - start_time
         total_seconds = int(duration.total_seconds())
         hours = total_seconds // 3600
         minutes = total_seconds % (60 * 60) // 60
         seconds = total_seconds % 60
 
-        for entry in guide.history:
-            print("[guide] " + entry)
         print("")
         print(f"Runtime: {hours}h {minutes}m {seconds}s.")
 
         notif.notify(
             title="A new guide was grabbed!",
-            body=f"{len(guide.channels)} channels were added, with {len(guide.programmes)} programmes in total. Runtime: {hours}h {minutes}m {seconds}s."
+            body=f"Runtime: {hours}h {minutes}m {seconds}s."
         )
 
         update_last_run(LAST_RUN_FILE, "finished")
     else:
-        print("Error: Could not connect to the internet. No guide file was created.")
+        raise Exception("Error: Could not connect to the internet. No guide file was grabbed.")
 
 
 if __name__ == "__main__":
