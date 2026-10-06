@@ -10,6 +10,7 @@ from modules.last_run import has_run_recently, update_last_run
 HOST = "1.1.1.1"
 CONFIG_PATH = "data"
 LAST_RUN_THRESHOLD = timedelta(minutes=30)
+WORK_DIR = os.path.dirname(os.path.realpath(__file__))
 
 # Get environment variables
 FUTURE_THRESHOLD = int(os.getenv("FUTURE_THRESHOLD", "3"))
@@ -36,7 +37,7 @@ def run(notif: Notif):
             "./tv_grab_kr/tv_grab_kr.js",
             "--days", f"{FUTURE_THRESHOLD}",
             "--output", TARGET_FILE
-        ], check=True)
+        ], cwd=WORK_DIR, check=True)
 
         duration = datetime.now() - start_time
         total_seconds = int(duration.total_seconds())
