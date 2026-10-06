@@ -13,10 +13,6 @@ RUN apt-get update && apt-get install -y \
     gosu \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install tv_grab_kr
-RUN cd /app && git clone https://github.com/koninginsamira/tv_grab_kr.git
-RUN cd /app/tv_grab_kr && npm install
-
 # Create Python virtual environment
 RUN python3 -m venv /.venv
 ENV PATH="/.venv/bin:$PATH"
@@ -37,6 +33,10 @@ RUN curl -fsSLO "$SUPERCRONIC_URL" \
     && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 COPY . .
+
+# Install tv_grab_kr
+RUN cd /app && git clone https://github.com/koninginsamira/tv_grab_kr.git
+RUN cd /app/tv_grab_kr && npm install
 
 # Make scripts executable
 RUN chmod a+x /entrypoint.sh && \
