@@ -7,10 +7,16 @@ WORKDIR /
 
 # Install system packages
 RUN apt-get update && apt-get install -y \
+    git \
     python3 python3-venv python3-pip \
     curl cron procps \
     gosu \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install tv_grab_kr
+WORKDIR /app
+RUN git clone https://github.com/koninginsamira/tv_grab_kr.git
+RUN npm install
 
 # Create Python virtual environment
 RUN python3 -m venv /.venv

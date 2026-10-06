@@ -32,8 +32,8 @@ def run(notif: Notif):
 
     if is_connected(HOST):
         subprocess.run([
-            "npx",
-            "-y", "tv_grab_kr",
+            "node",
+            "./tv_grab_kr/tv_grab_kr.js",
             "--days", f"{FUTURE_THRESHOLD}",
             "--output", TARGET_FILE
         ], check=True)
